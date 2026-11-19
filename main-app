@@ -1,1 +1,100 @@
+import os
+import sys
+import tkinter as tk
+from pathlib import Path
 
+# Siyah / Gri Tema Renkleri
+BG_DARK  = "#1e1e1e"
+BG_GRAY  = "#2d2d2d"
+FG_WHITE = "#ffffff"
+FG_MUTED = "#aaaaaa"
+ACCENT   = "#4CAF50"
+EXIT_BG  = "#e74c3c"
+
+class MainApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Game Star - Ana Uygulama")
+        
+        # Pencereyi gizle, tam ekran yap ve sonra göster (küçük açılmayı engeller)
+        self.root.withdraw()
+        self.is_fullscreen = True
+        self.root.attributes("-fullscreen", True)
+        self.root.configure(bg=BG_DARK)
+        
+        # Kısayollar (F11: Tam Ekran / ESC: Çıkış)
+        self.root.bind("<F11>", self.toggle_fullscreen)
+        self.root.bind("<Escape>", lambda e: self.root.destroy())
+
+        # Çıkış Butonu (Sağ Üst)
+        self.exit_btn = tk.Button(self.root, text="✖", command=self.root.destroy,
+                                  bg=EXIT_BG, fg="white", activebackground="#c0392b", activeforeground="white",
+                                  relief="flat", bd=0, font=("Segoe UI", 12, "bold"), cursor="hand2",
+                                  width=3)
+        self.exit_btn.place(relx=1.0, rely=0.0, anchor="ne", x=-10, y=10)
+
+        # Ana İçerik Alanı
+        self.container = tk.Frame(self.root, bg=BG_DARK)
+        self.container.pack(fill="both", expand=True)
+
+        self.build_ui()
+        
+        # Pencereyi tam ekran ayarları yapıldıktan sonra görünür yap
+        self.root.deiconify()
+
+    def toggle_fullscreen(self, event=None):
+        self.is_fullscreen = not self.is_fullscreen
+        self.root.attributes("-fullscreen", self.is_fullscreen)
+        return "break"
+
+    def build_ui(self):
+        # Ortada bir kutu (Kart)
+        card = tk.Frame(self.container, bg=BG_GRAY, bd=0)
+        card.place(relx=0.5, rely=0.5, anchor="center", width=450, height=250)
+
+        # Uygulamanın simgesi (varsa)
+        icon_path = Path(__file__).parent / "icoimg.ico"
+        if icon_path.exists():
+            try:
+                self.root.iconbitmap(str(icon_path))
+            except:
+                pass
+
+        # Başlık
+        tk.Label(card, text="Game Star", bg=BG_GRAY, fg=FG_WHITE, 
+                 font=("Segoe UI", 20, "bold")).pack(pady=(35, 5))
+                 
+        tk.Label(card, text="Ana uygulamaya hoş geldiniz.", bg=BG_GRAY, fg=FG_MUTED, 
+                 font=("Segoe UI", 10)).pack(pady=(0, 25))
+
+        # Animasyon/Bekleme Etiketi
+        self.anim_label = tk.Label(card, text="⠋", bg=BG_GRAY, fg=ACCENT, 
+                                   font=("Segoe UI", 28, "bold"))
+        self.anim_label.pack()
+
+        self.status_label = tk.Label(card, text="Sistem bağlantısı kuruluyor...", 
+                                     bg=BG_GRAY, fg=FG_WHITE, font=("Segoe UI", 11))
+        self.status_label.pack(pady=(10, 0))
+
+        # Animasyonu başlat
+        self.animate_loading(0)
+        
+        # Örnek: 4 saniye sonra durum metnini değiştir (İsterseniz burayı kendi sisteminize göre değiştirin)
+        self.root.after(4000, self.finish_loading)
+
+    def animate_loading(self, index):
+        frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+        # Eğer animasyon etiketi hala varsa döndürmeye devam et
+        if hasattr(self, 'anim_label') and self.anim_label.winfo_exists():
+            self.anim_label.config(text=frames[index % len(frames)])
+            self.root.after(100, self.animate_loading, index + 1)
+
+    def finish_loading(self):
+        if hasattr(self, 'anim_label') and self.anim_label.winfo_exists():
+            self.anim_label.config(text="✅") # Tik işareti
+            self.status_label.config(text="Sistem Hazır", fg=ACCENT)
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = MainApp(root)
+    root.mainloop()
