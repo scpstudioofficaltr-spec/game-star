@@ -15,18 +15,33 @@ BG_GRAY  = "#2d2d2d"
 FG_WHITE = "#ffffff"
 FG_MUTED = "#aaaaaa"
 ACCENT   = "#4CAF50"
+EXIT_BG  = "#e74c3c"
 
 class GameStarApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Game Star")
-        self.root.geometry("450x300")
-        self.root.resizable(False, False)
+        
+        # Tam ekran başlat (F11 ile değiştirilebilir)
+        self.is_fullscreen = True
+        self.root.attributes("-fullscreen", True)
         self.root.configure(bg=BG_DARK)
         
-        # Simge dosyasının yolu (bu kodun çalıştığı klasör)
+        # Klavye kısayolları (F11: Tam ekran, ESC: Çıkış)
+        self.root.bind("<F11>", self.toggle_fullscreen)
+        self.root.bind("<Escape>", lambda e: self.root.destroy())
+        
+        # Dosya yolları
         self.base_dir = Path(__file__).parent
         self.icon_path = self.base_dir / ICON_NAME
+
+        # Çıkış Butonu (Sağ Üst Köşe)
+        self.exit_btn = tk.Button(self.root, text="✖", command=self.root.destroy,
+                                  bg=EXIT_BG, fg="white", activebackground="#c0392b", activeforeground="white",
+                                  relief="flat", bd=0, font=("Segoe UI", 12, "bold"), cursor="hand2",
+                                  width=3)
+        # Butonu sağ üstte konumlandır
+        self.exit_btn.place(relx=1.0, rely=0.0, anchor="ne", x=-10, y=10)
 
         # Ana çerçeve
         self.container = tk.Frame(root, bg=BG_DARK)
@@ -38,6 +53,11 @@ class GameStarApp:
         # Simge kontrolünü arka planda başlat
         threading.Thread(target=self.check_and_download_icon, daemon=True).start()
 
+    def toggle_fullscreen(self, event=None):
+        self.is_fullscreen = not self.is_fullscreen
+        self.root.attributes("-fullscreen", self.is_fullscreen)
+        return "break"
+
     # ---------- 1. AŞAMA: LOADING EKRANI ----------
     def show_loading_screen(self):
         for w in self.container.winfo_children():
@@ -47,10 +67,10 @@ class GameStarApp:
         self.loading_frame.pack(fill="both", expand=True)
 
         tk.Label(self.loading_frame, text="Sistem Başlatılıyor...", 
-                 bg=BG_DARK, fg=FG_MUTED, font=("Segoe UI", 10)).pack(pady=(100, 10))
+                 bg=BG_DARK, fg=FG_MUTED, font=("Segoe UI", 12)).pack(pady=(150, 10))
         
         self.loading_label = tk.Label(self.loading_frame, text="Simge kontrol ediliyor...", 
-                                      bg=BG_DARK, fg=FG_WHITE, font=("Segoe UI", 11, "bold"))
+                                      bg=BG_DARK, fg=FG_WHITE, font=("Segoe UI", 14, "bold"))
         self.loading_label.pack()
 
     def update_loading_text(self, text):
@@ -83,10 +103,9 @@ class GameStarApp:
 
     def apply_icon(self):
         try:
-            # Pencerenin sol üst köşesindeki simgeyi ayarla
             self.root.iconbitmap(str(self.icon_path))
         except Exception:
-            pass # Simge yüklenemezse geç, çökmesin
+            pass 
         
         # Kısa bir bekleme sonrası ana ekrana geç
         self.root.after(1000, self.show_main_screen)
@@ -101,15 +120,14 @@ class GameStarApp:
 
         # Ortada büyük bir kutu (Kart görünümü)
         card = tk.Frame(main_frame, bg=BG_GRAY, bd=0)
-        card.place(relx=0.5, rely=0.5, anchor="center", width=350, height=180)
+        card.place(relx=0.5, rely=0.5, anchor="center", width=400, height=200)
 
-        # Ortada Loading animasyonu için etiket
         self.anim_label = tk.Label(card, text="⠋", bg=BG_GRAY, fg=ACCENT, 
-                                   font=("Segoe UI", 24, "bold"))
-        self.anim_label.pack(pady=(30, 10))
+                                   font=("Segoe UI", 28, "bold"))
+        self.anim_label.pack(pady=(40, 10))
 
         self.main_status = tk.Label(card, text="Bağlantı kuruluyor...", 
-                                    bg=BG_GRAY, fg=FG_WHITE, font=("Segoe UI", 10))
+                                    bg=BG_GRAY, fg=FG_WHITE, font=("Segoe UI", 12))
         self.main_status.pack()
 
         # Animasyonu başlat
@@ -119,7 +137,6 @@ class GameStarApp:
         self.root.after(3000, self.show_to_be_continued)
 
     def animate_loading(self, index):
-        # Basit bir yükleniyor animasyonu (Braille karakterleri ile)
         frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
         if hasattr(self, 'anim_label') and self.anim_label.winfo_exists():
             self.anim_label.config(text=frames[index % len(frames)])
@@ -127,8 +144,8 @@ class GameStarApp:
 
     def show_to_be_continued(self):
         if hasattr(self, 'main_status') and self.main_status.winfo_exists():
-            self.anim_label.config(text="🍿") # Animasyonu durdur, yerine patlamış mısır koy
-            self.main_status.config(text="To be continued...", fg=ACCENT, font=("Segoe UI", 12, "bold"))
+            self.anim_label.config(text="🍿")
+            self.main_status.config(text="To be continued...", fg=ACCENT, font=("Segoe UI", 14, "bold"))
 
 
 if __name__ == "__main__":
