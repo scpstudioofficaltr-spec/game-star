@@ -22,10 +22,17 @@ class GameStarApp:
         self.root = root
         self.root.title("Game Star")
         
-        # Tam ekran başlat (F11 ile değiştirilebilir)
+        # Pencereyi başlangıçta gizle (Küçük açılma efektini engellemek için)
+        self.root.withdraw()
+        
+        # Tam ekran ayarları
         self.is_fullscreen = True
         self.root.attributes("-fullscreen", True)
         self.root.configure(bg=BG_DARK)
+        
+        # Tam ekranın en önde açılmasını sağla
+        self.root.attributes("-topmost", True)
+        self.root.after(100, lambda: self.root.attributes("-topmost", False)) # Bir süre sonra özelliği kaldır
         
         # Klavye kısayolları (F11: Tam ekran, ESC: Çıkış)
         self.root.bind("<F11>", self.toggle_fullscreen)
@@ -40,7 +47,6 @@ class GameStarApp:
                                   bg=EXIT_BG, fg="white", activebackground="#c0392b", activeforeground="white",
                                   relief="flat", bd=0, font=("Segoe UI", 12, "bold"), cursor="hand2",
                                   width=3)
-        # Butonu sağ üstte konumlandır
         self.exit_btn.place(relx=1.0, rely=0.0, anchor="ne", x=-10, y=10)
 
         # Ana çerçeve
@@ -78,7 +84,6 @@ class GameStarApp:
 
     # ---------- SİMGE KONTROLÜ VE İNDİRME ----------
     def check_and_download_icon(self):
-        # Simge var mı diye kontrol et
         if not self.icon_path.exists() or self.icon_path.stat().st_size == 0:
             self.update_loading_text("Simge bulunamadı, indiriliyor...")
             try:
@@ -86,7 +91,6 @@ class GameStarApp:
                 with urllib.request.urlopen(req, timeout=15) as resp, open(self.icon_path, "wb") as f:
                     f.write(resp.read())
                 
-                # İndirdikten sonra tekrar kontrol et
                 if not self.icon_path.exists() or self.icon_path.stat().st_size == 0:
                     raise Exception("İndirilen simge dosyası geçersiz.")
                 
@@ -98,7 +102,6 @@ class GameStarApp:
         else:
             self.update_loading_text("Simge hazır.")
         
-        # Simge dosyasını uygulamanın penceresine ata
         self.root.after(0, self.apply_icon)
 
     def apply_icon(self):
@@ -118,7 +121,6 @@ class GameStarApp:
         main_frame = tk.Frame(self.container, bg=BG_DARK)
         main_frame.pack(fill="both", expand=True)
 
-        # Ortada büyük bir kutu (Kart görünümü)
         card = tk.Frame(main_frame, bg=BG_GRAY, bd=0)
         card.place(relx=0.5, rely=0.5, anchor="center", width=400, height=200)
 
@@ -130,11 +132,11 @@ class GameStarApp:
                                     bg=BG_GRAY, fg=FG_WHITE, font=("Segoe UI", 12))
         self.main_status.pack()
 
-        # Animasyonu başlat
         self.animate_loading(0)
-
-        # 3 saniye sonra "to be continued" yazısını göster
         self.root.after(3000, self.show_to_be_continued)
+        
+        # Pencereyi şimdi göster (böylece tam ekran ayarları çoktan yapılmış olur)
+        self.root.deiconify()
 
     def animate_loading(self, index):
         frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
