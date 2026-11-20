@@ -7,10 +7,11 @@ import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 from pathlib import Path
 
-# İndirilecek dosyalar: (kaydedilecek ad, URL)
+# DÜZELTİLDİ: GitHub linkleri "raw.githubusercontent.com" formatına çevrildi.
+# (github.com/.../raw/refs/heads/main/... formatı bazen 404 verir veya HTML döner)
 FILES = [
-    ("app.pyw", "https://github.com/scpstudioofficaltr-spec/game-star/raw/refs/heads/main/app.pyw"),
-    ("icoimg.ico", "https://github.com/scpstudioofficaltr-spec/load-system-by-crgame/raw/refs/heads/main/icoimg"),
+    ("app.pyw", "https://raw.githubusercontent.com/scpstudioofficaltr-spec/game-star/main/app.pyw"),
+    ("icoimg.ico", "https://raw.githubusercontent.com/scpstudioofficaltr-spec/load-system-by-crgame/main/icoimg"),
 ]
 
 SUBFOLDER = "Game Star"
@@ -248,6 +249,11 @@ class App:
         self.root.after(0, lambda: self.finish_and_launch(shortcut_path))
 
     def download_and_verify(self, url, filepath, filename, file_index, total_files):
+        # DÜZELTİLDİ: GitHub raw linklerine önbellek önleyici (cache-buster) eklendi
+        if "raw.githubusercontent.com" in url:
+            sep = "&" if "?" in url else "?"
+            url = url + sep + "t=" + str(int(time.time()))
+
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
         with urllib.request.urlopen(req, timeout=30) as resp:
             total_size = int(resp.headers.get("Content-Length", 0))
