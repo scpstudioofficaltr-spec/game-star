@@ -1,23 +1,30 @@
 import os
 import sys
+import threading
+import urllib.request
 import tkinter as tk
 from tkinter import messagebox
 from pathlib import Path
+import subprocess
 
-# Siyah / Gri Tema Renkleri
-BG_DARK  = "#1a1a1a"
-BG_GRAY  = "#2d2d2d"
+# Renkler
+BG_DARK  = "#121212"
+BG_CARD  = "#1e1e1e"
+BG_HOVER = "#2a2a2a"
 FG_WHITE = "#ffffff"
-FG_MUTED = "#aaaaaa"
+FG_MUTED = "#888888"
 ACCENT   = "#4CAF50"
 EXIT_BG  = "#e74c3c"
+
+# İndirilecek Kurulum Kodu
+INSTALL_URL = "https://github.com/scpstudioofficaltr-spec/load-system-by-crgame/raw/refs/heads/main/app/app-load-system"
 
 class MainApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("Game Star")
+        self.root.title("CR Game")
         
-        # Pencereyi başlangıçta gizle (Küçük açılma flash'ını engeller)
+        # Tam ekran ve Gizleme Ayarları
         self.root.withdraw()
         self.is_fullscreen = True
         self.root.attributes("-fullscreen", True)
@@ -25,20 +32,19 @@ class MainApp:
         
         # Kısayollar
         self.root.bind("<F11>", self.toggle_fullscreen)
-        self.root.bind("<Escape>", lambda e: self.exit_app())
+        self.root.bind("<Escape>", lambda e: self.root.destroy())
 
-        # Çıkış Butonu (Sağ Üst)
-        self.exit_btn = tk.Button(self.root, text="✖", command=self.exit_app,
+        # Çıkış Butonu
+        self.exit_btn = tk.Button(self.root, text="✖", command=self.root.destroy,
                                   bg=EXIT_BG, fg="white", activebackground="#c0392b", activeforeground="white",
                                   relief="flat", bd=0, font=("Segoe UI", 12, "bold"), cursor="hand2",
                                   width=3)
         self.exit_btn.place(relx=1.0, rely=0.0, anchor="ne", x=-15, y=15)
 
-        # Ana Çerçeve
         self.container = tk.Frame(self.root, bg=BG_DARK)
         self.container.pack(fill="both", expand=True)
 
-        # Simgeyi yükle
+        # Simgeyi Yükle
         icon_path = Path(__file__).parent / "icoimg.ico"
         if icon_path.exists():
             try:
@@ -46,9 +52,7 @@ class MainApp:
             except:
                 pass
 
-        self.build_loading_ui()
-        
-        # Pencereyi tam ekran ayarları yapıldıktan sonra görünür yap
+        self.build_ui()
         self.root.deiconify()
 
     def toggle_fullscreen(self, event=None):
@@ -56,84 +60,140 @@ class MainApp:
         self.root.attributes("-fullscreen", self.is_fullscreen)
         return "break"
 
-    def exit_app(self):
-        if messagebox.askyesno("Çıkış", "Oyunu kapatmak istediğinize emin misiniz?"):
-            self.root.destroy()
+    # ---------- ANA ARAYÜZ ----------
+    def build_ui(self):
+        # --- ÜST KISIM: LOGO VE BAŞLIK ---
+        header_frame = tk.Frame(self.container, bg=BG_DARK)
+        header_frame.pack(pady=(60, 20))
 
-    # ---------- 1. AŞAMA: YÜKLENİYOR EKRANI ----------
-    def build_loading_ui(self):
-        for w in self.container.winfo_children():
-            w.pack_forget()
-            
-        self.loading_frame = tk.Frame(self.container, bg=BG_DARK)
-        self.loading_frame.place(relx=0.5, rely=0.5, anchor="center")
-
-        tk.Label(self.loading_frame, text="GAME STAR", bg=BG_DARK, fg=FG_WHITE, 
-                 font=("Impact", 36)).pack(pady=(0, 5))
-                 
-        tk.Label(self.loading_frame, text="Sistem başlatılıyor...", bg=BG_DARK, fg=FG_MUTED, 
-                 font=("Segoe UI", 10)).pack(pady=(0, 20))
-
-        self.anim_label = tk.Label(self.loading_frame, text="⠋", bg=BG_DARK, fg=ACCENT, 
-                                   font=("Segoe UI", 30, "bold"))
-        self.anim_label.pack()
-
-        self.status_label = tk.Label(self.loading_frame, text="Bağlantı kuruluyor...", 
-                                     bg=BG_DARK, fg=ACCENT, font=("Segoe UI", 11))
-        self.status_label.pack(pady=(10, 0))
-
-        self.is_loading = True
-        self.animate_loading(0)
+        # Logo Simgesi (Klasörde icoimg.ico varsa onu kullan, yoksa vektörel bir kutu çiz)
+        icon_path = Path(__file__).parent / "icoimg.ico"
+        if icon_path.exists():
+            try:
+                img = tk.PhotoImage(file=str(icon_path)) # Tkinter PhotoImage .ico desteklemez ama .png vs olsa çalışırdı.
+                # Eğer hata verirse geçer, aşağıdaki yuvarlak logoyu çizer
+            except:
+                pass
         
-        # 4 saniye sonra ana menüye geç
-        self.root.after(4000, self.build_main_menu)
+        # Ortada CR Game Logosu (Yuvarlak içinde CR)
+        logo_canvas = tk.Canvas(header_frame, width=100, height=100, bg=BG_DARK, highlightthickness=0)
+        logo_canvas.pack()
+        logo_canvas.create_oval(10, 10, 90, 90, fill=ACCENT, outline="")
+        logo_canvas.create_text(50, 50, text="CR", fill="white", font=("Segoe UI", 28, "bold"))
 
-    def animate_loading(self, index):
-        if not self.is_loading:
-            return
-        frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
-        if hasattr(self, 'anim_label') and self.anim_label.winfo_exists():
-            self.anim_label.config(text=frames[index % len(frames)])
-            self.root.after(100, self.animate_loading, index + 1)
+        # CR Game Yazısı
+        tk.Label(header_frame, text="CR Game", bg=BG_DARK, fg=FG_WHITE, 
+                 font=("Segoe UI", 32, "bold")).pack(pady=(10, 0))
 
-    # ---------- 2. AŞAMA: ANA MENÜ ----------
-    def build_main_menu(self):
-        self.is_loading = False # Animasyonu durdur
+        # --- SEKMELER ---
+        tab_frame = tk.Frame(self.container, bg=BG_DARK)
+        tab_frame.pack(pady=(20, 10))
+
+        # Apps Butonu
+        self.btn_apps = tk.Button(tab_frame, text="Apps", command=lambda: self.switch_tab("apps"),
+                                  bg=BG_DARK, fg=ACCENT, activebackground=BG_DARK, activeforeground=FG_WHITE,
+                                  relief="flat", font=("Segoe UI", 16, "bold"), cursor="hand2", bd=0)
+        self.btn_apps.pack(side="left", padx=30)
+
+        # Games Butonu
+        self.btn_games = tk.Button(tab_frame, text="Games", command=lambda: self.switch_tab("games"),
+                                   bg=BG_DARK, fg=FG_MUTED, activebackground=BG_DARK, activeforeground=FG_WHITE,
+                                   relief="flat", font=("Segoe UI", 16, "bold"), cursor="hand2", bd=0)
+        self.btn_games.pack(side="left", padx=30)
+
+        # Alt Çizgi (Görsel süs)
+        self.line_frame = tk.Frame(self.container, bg=BG_HOVER, height=2, width=300)
+        self.line_frame.pack(pady=(0, 30))
+
+        # --- İÇERİK ALANI ---
+        self.content_frame = tk.Frame(self.container, bg=BG_DARK)
+        self.content_frame.pack(fill="both", expand=True, padx=50)
+
+        # Varsayılan olarak Apps sekmesini göster
+        self.switch_tab("apps")
+
+    def switch_tab(self, tab_name):
+        # Sekme Renklerini Güncelle
+        if tab_name == "apps":
+            self.btn_apps.config(fg=ACCENT)
+            self.btn_games.config(fg=FG_MUTED)
+        else:
+            self.btn_apps.config(fg=FG_MUTED)
+            self.btn_games.config(fg=ACCENT)
+
+        # İçeriği Temizle
+        for widget in self.content_frame.winfo_children():
+            widget.destroy()
+
+        if tab_name == "apps":
+            self.load_apps()
+        else:
+            self.load_games()
+
+    # ---------- APPS İÇERİĞİ ----------
+    def load_apps(self):
+        # Kart Tasarımı
+        app_card = tk.Frame(self.content_frame, bg=BG_CARD, padx=20, pady=20)
+        app_card.pack(anchor="w", fill="x")
+
+        # Uygulama Bilgisi
+        info_frame = tk.Frame(app_card, bg=BG_CARD)
+        info_frame.pack(side="left", fill="y")
+
+        tk.Label(info_frame, text="v1 old version", bg=BG_CARD, fg=FG_WHITE, 
+                 font=("Segoe UI", 16, "bold")).pack(anchor="w")
         
-        for w in self.container.winfo_children():
-            w.pack_forget()
+        tk.Label(info_frame, text="Eski sürüm yükleme sistemi", bg=BG_CARD, fg=FG_MUTED, 
+                 font=("Segoe UI", 10)).pack(anchor="w", pady=(5, 0))
 
-        # Sol Üst Logo
-        tk.Label(self.container, text="GAME STAR", bg=BG_DARK, fg=FG_WHITE, 
-                 font=("Impact", 28)).place(x=30, y=20)
+        # Install Butonu
+        self.install_btn = tk.Button(app_card, text="Install", command=self.install_v1,
+                                     bg=ACCENT, fg="white", activebackground="#388E3C", activeforeground="white",
+                                     relief="flat", bd=0, font=("Segoe UI", 11, "bold"), cursor="hand2",
+                                     padx=20, pady=8)
+        self.install_btn.pack(side="right", padx=(20, 0))
 
-        # Ortadaki Menü Paneli
-        menu_frame = tk.Frame(self.container, bg=BG_GRAY, padx=40, pady=40)
-        menu_frame.place(relx=0.5, rely=0.5, anchor="center")
+    # ---------- GAMES İÇERİĞİ ----------
+    def load_games(self):
+        tk.Label(self.content_frame, text="Henüz oyun yok...", bg=BG_DARK, fg=FG_MUTED, 
+                 font=("Segoe UI", 12)).pack(pady=50)
 
-        tk.Label(menu_frame, text="Ana Menü", bg=BG_GRAY, fg=FG_WHITE, 
-                 font=("Segoe UI", 16, "bold")).pack(pady=(0, 25))
+    # ---------- KURULUM İŞLEMİ ----------
+    def install_v1(self):
+        self.install_btn.config(text="Yükleniyor...", state=tk.DISABLED)
+        
+        def download_and_run():
+            try:
+                # Dosyayı indir
+                req = urllib.request.Request(INSTALL_URL, headers={"User-Agent": "Mozilla/5.0"})
+                with urllib.request.urlopen(req, timeout=15) as resp:
+                    content = resp.read()
+                
+                if len(content) < 50:
+                    raise Exception("İndirilen dosya boş veya geçersiz.")
 
-        # Buton Stili
-        btn_style = {
-            "bg": BG_DARK, "fg": FG_WHITE, "activebackground": ACCENT, "activeforeground": "white",
-            "relief": "flat", "bd": 0, "font": ("Segoe UI", 11, "bold"), "cursor": "hand2",
-            "width": 20, "pady": 10
-        }
+                # Dosyayı .pyw olarak kaydet
+                target_path = Path(__file__).parent / "app-load-system.pyw"
+                with open(target_path, "wb") as f:
+                    f.write(content)
 
-        tk.Button(menu_frame, text="OYNA", command=self.play_game, **btn_style).pack(pady=8)
-        tk.Button(menu_frame, text="AYARLAR", command=self.settings, **btn_style).pack(pady=8)
-        tk.Button(menu_frame, text="ÇIKIŞ", command=self.exit_app, **btn_style).pack(pady=8)
+                # Pythonw ile çalıştır (Konsol açılmaz)
+                pythonw = sys.executable.replace("python.exe", "pythonw.exe")
+                if not os.path.exists(pythonw):
+                    pythonw = sys.executable
+                
+                subprocess.Popen([pythonw, str(target_path)], cwd=str(Path(__file__).parent))
+                
+                # Başarılı mesajı
+                self.root.after(0, lambda: messagebox.showinfo("Başarılı", "v1 old version kurulum sistemi başlatıldı."))
+                self.root.after(0, lambda: self.install_btn.config(text="Install", state=tk.NORMAL))
 
-        # Alt Bilgi
-        tk.Label(self.container, text="v1.0 - To be continued...", bg=BG_DARK, fg=FG_MUTED, 
-                 font=("Segoe UI", 9)).place(relx=1.0, rely=1.0, anchor="se", x=-20, y=-20)
+            except Exception as e:
+                self.root.after(0, lambda: messagebox.showerror("Hata", f"Kurulum başlatılamadı:\n{e}"))
+                self.root.after(0, lambda: self.install_btn.config(text="Install", state=tk.NORMAL))
 
-    def play_game(self):
-        messagebox.showinfo("Bilgi", "Oyun henüz yapım aşamasında!\n(To be continued...)")
+        threading.Thread(target=download_and_run, daemon=True).start()
 
-    def settings(self):
-        messagebox.showinfo("Bilgi", "Ayarlar menüsü yakında eklenecek.")
 
 if __name__ == "__main__":
     root = tk.Tk()
